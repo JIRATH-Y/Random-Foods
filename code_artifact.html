@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สุ่มเมนูอาหารประจำวัน - Food Randomizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Kanit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Kanit', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            cyan: '#06b6d4',
+                            amber: '#f59e0b',
+                            purple: '#8b5cf6',
+                            slate: '#0f172a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        /* 3D Card Flip styles */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Glow effects */
+        .glow-amber {
+            box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.4);
+        }
+        .glow-cyan {
+            box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.4);
+        }
+        .glow-purple {
+            box-shadow: 0 0 25px -5px rgba(139, 92, 246, 0.4);
+        }
+
+        @keyframes pulse-subtle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-cyan-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 py-3 sm:px-8">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="app.resetView()">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-cyan-500 to-purple-600 flex items-center justify-center text-xl shadow-lg shadow-cyan-500/20">
+                    🍱
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold bg-gradient-to-r from-amber-400 via-cyan-300 to-purple-400 bg-clip-text text-transparent">
+                        สุ่มกินอะไรดี?
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">สุ่มเมนูอาหารประจำวัน จัดหมวดหมู่ครบจบในที่เดียว</p>
+                </div>
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div class="flex items-center gap-2">
+                <button onclick="app.openModal('historyModal')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-medium border border-slate-700 transition flex items-center gap-2">
+                    <i class="fa-solid me-1 fa-clock-rotate-left text-amber-400"></i>
+                    <span class="hidden sm:inline">ประวัติ</span>
+                    <span id="historyBadge" class="bg-amber-500 text-slate-950 text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+                <button onclick="app.openModal('customMenuModal')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-medium border border-slate-700 transition flex items-center gap-2">
+                    <i class="fa-solid fa-utensils text-cyan-400"></i>
+                    <span class="hidden sm:inline">จัดการเมนู</span>
+                </button>
+                <button onclick="app.toggleSound()" id="soundBtn" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="เปิด/ปิดเสียง">
+                    <i class="fa-solid fa-volume-high text-cyan-400" id="soundIcon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto w-full px-4 py-6 flex-grow flex flex-col gap-6">
+
+        <!-- Top Controls: Filters & Exclusions -->
+        <section class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 backdrop-blur-sm space-y-4">
+            
+            <!-- Category Tabs / Food Station Selector -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs sm:text-sm font-semibold text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-store text-cyan-400"></i> เลือกโซนร้านค้า / หมวดหมู่
+                    </label>
+                    <button onclick="app.selectCategory('all')" class="text-xs text-cyan-400 hover:text-cyan-300 underline">
+                        เลือกทั้งหมด
+                    </button>
+                </div>
+                
+                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-none" id="categoryChips">
+                    <!-- Dynamic Category Chips loaded via JS -->
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- Filters: Exclusions & Preferences -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <!-- Allergen / Ingredient Dislike Filter -->
+                <div>
+                    <label class="text-xs sm:text-sm font-semibold text-slate-300 flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-ban text-rose-400"></i> เลือกที่ไม่กิน / วัตถุดิบที่แพ้
+                    </label>
+                    <div class="flex flex-wrap gap-1.5" id="exclusionChips">
+                        <!-- Exclusion Tags JS -->
+                    </div>
+                </div>
+
+                <!-- Special Options & Anti-Repeat toggle -->
+                <div class="flex flex-col justify-between gap-2">
+                    <div>
+                        <label class="text-xs sm:text-sm font-semibold text-slate-300 flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-shield-halved text-amber-400"></i> กฎการสุ่มป้องกันอาหารซ้ำ
+                        </label>
+                        <label class="inline-flex items-center gap-2 cursor-pointer bg-slate-800/80 hover:bg-slate-800 px-3 py-2 rounded-xl border border-slate-700/80 transition w-full">
+                            <input type="checkbox" id="antiRepeatToggle" checked class="w-4 h-4 text-cyan-500 rounded bg-slate-900 border-slate-700 focus:ring-cyan-500 focus:ring-offset-slate-900">
+                            <span class="text-xs text-slate-200">ไม่สุ่มซ้ำกับเมนูที่กินไปแล้วใน 3 วันล่าสุด</span>
+                        </label>
+                    </div>
+
+                    <div class="text-right text-xs text-slate-400 flex items-center justify-between">
+                        <span>เมนูพร้อมสุ่ม: <strong id="availableCount" class="text-cyan-400 font-bold text-sm">0</strong> รายการ</span>
+                        <button onclick="app.resetFilters()" class="text-slate-400 hover:text-slate-200 text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-rotate-left"></i> รีเซ็ตตัวกรอง
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Center Hero: The Interactive Randomizer Card -->
+        <section class="flex flex-col items-center justify-center flex-grow my-2">
+
+            <!-- Mode Switcher: Single Spin vs Full Combo Set -->
+            <div class="inline-flex p-1 bg-slate-900 border border-slate-800 rounded-xl mb-6">
+                <button onclick="app.setMode('single')" id="modeSingleBtn" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md">
+                    <i class="fa-solid fa-dice me-1.5"></i> สุ่ม 1 เมนู
+                </button>
+                <button onclick="app.setMode('combo')" id="modeComboBtn" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-utensils me-1.5"></i> จัดเซ็ตคอมโบ 3 โซน (จานหลัก + ของทานเล่น + เครื่องดื่ม)
+                </button>
+            </div>
+
+            <!-- Single Card Mode View -->
+            <div id="singleCardView" class="w-full max-w-sm sm:max-w-md perspective-1000">
+                <div id="cardInner" class="relative w-full h-[380px] sm:h-[420px] rounded-3xl transition-transform duration-700 transform-style-3d shadow-2xl">
+                    
+                    <!-- Card Front (Default / Unrevealed state) -->
+                    <div class="absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border-2 border-slate-700/80 p-6 flex flex-col items-center justify-between backface-hidden glow-cyan text-center">
+                        <div class="w-full flex justify-between items-center text-xs text-slate-400">
+                            <span class="bg-slate-800 px-3 py-1 rounded-full border border-slate-700" id="cardFrontCategoryBadge">พร้อมสุ่มแล้ว</span>
+                            <span id="cardFrontCounter">🎲</span>
+                        </div>
+
+                        <div class="my-auto flex flex-col items-center justify-center space-y-4">
+                            <div id="frontEmojiIcon" class="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-6xl sm:text-7xl shadow-inner animate-pulse-subtle">
+                                ❓
+                            </div>
+                            <div class="space-y-1">
+                                <h3 id="frontCardTitle" class="text-xl sm:text-2xl font-bold text-slate-100">วันนี้กินอะไรดี?</h3>
+                                <p id="frontCardSub" class="text-xs sm:text-sm text-slate-400 max-w-xs">กดปุ่มสุ่มด้านล่างเพื่อสุ่มเมนูเด็ดที่เหมาะกับคุณวันนี้!</p>
+                            </div>
+                        </div>
+
+                        <div class="w-full text-xs text-slate-500 italic">
+                            * รองรับการกรองของแพ้ และไม่สุ่มซ้ำ 3 วันล่าสุด
+                        </div>
+                    </div>
+
+                    <!-- Card Back (Revealed Menu Result) -->
+                    <div class="absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border-2 border-cyan-500/50 p-6 flex flex-col items-center justify-between backface-hidden rotate-y-180 glow-amber text-center">
+                        <div class="w-full flex justify-between items-center">
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800/60" id="resultCategory">
+                                โซนอาหาร
+                            </span>
+                            <span class="text-xs font-semibold text-amber-400 flex items-center gap-1" id="resultStation">
+                                <i class="fa-solid fa-location-dot"></i> ร้านค้า
+                            </span>
+                        </div>
+
+                        <div class="my-auto flex flex-col items-center justify-center space-y-3">
+                            <div id="resultEmoji" class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-tr from-amber-500/20 via-slate-800 to-cyan-500/20 border border-amber-500/40 flex items-center justify-center text-6xl sm:text-7xl shadow-lg">
+                                🍲
+                            </div>
+                            <div>
+                                <h2 id="resultName" class="text-2xl sm:text-3xl font-extrabold text-amber-400 tracking-tight">
+                                    ชื่อเมนูอาหาร
+                                </h2>
+                                <p id="resultDesc" class="text-xs sm:text-sm text-slate-300 mt-1 max-w-xs line-clamp-2">
+                                    คำอธิบายเมนูอาหาร
+                                </p>
+                            </div>
+
+                            <!-- Tags / Options -->
+                            <div class="flex flex-wrap justify-center gap-1.5" id="resultTags">
+                                <!-- Tags JS -->
+                            </div>
+                        </div>
+
+                        <!-- Result Actions -->
+                        <div class="w-full space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="app.acceptMeal()" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-semibold text-xs sm:text-sm shadow-lg transition flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-circle-check"></i> กินอันนี้แหละ!
+                                </button>
+                                <button onclick="app.searchNearby()" class="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs sm:text-sm transition flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-map-location-dot text-cyan-400"></i> ร้านใกล้ฉัน
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Combo Set Mode View (Hidden by default) -->
+            <div id="comboCardView" class="hidden w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                <!-- Main Dish Combo Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col items-center text-center space-y-3 relative overflow-hidden">
+                    <div class="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        1. อาหารจานหลัก
+                    </div>
+                    <div id="comboMainEmoji" class="text-5xl my-2">🍱</div>
+                    <h4 id="comboMainName" class="text-lg font-bold text-slate-100">รอสุ่มเมนูหลัก...</h4>
+                    <p id="comboMainCat" class="text-xs text-slate-400">-</p>
+                </div>
+
+                <!-- Snack/Side Combo Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col items-center text-center space-y-3 relative overflow-hidden">
+                    <div class="text-xs font-bold px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        2. ของทานเล่น / ของหวาน
+                    </div>
+                    <div id="comboSnackEmoji" class="text-5xl my-2">🍢</div>
+                    <h4 id="comboSnackName" class="text-lg font-bold text-slate-100">รอสุ่มของทานเล่น...</h4>
+                    <p id="comboSnackCat" class="text-xs text-slate-400">-</p>
+                </div>
+
+                <!-- Beverage Combo Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col items-center text-center space-y-3 relative overflow-hidden">
+                    <div class="text-xs font-bold px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                        3. เครื่องดื่ม
+                    </div>
+                    <div id="comboDrinkEmoji" class="text-5xl my-2">🥤</div>
+                    <h4 id="comboDrinkName" class="text-lg font-bold text-slate-100">รอสุ่มเครื่องดื่ม...</h4>
+                    <p id="comboDrinkCat" class="text-xs text-slate-400">-</p>
+                </div>
+
+            </div>
+
+            <!-- Big Spin Action Button -->
+            <div class="mt-8 flex flex-col sm:flex-row items-center gap-3 w-full max-w-sm sm:max-w-md">
+                <button id="spinBtn" onclick="app.spin()" class="w-full py-4 px-8 rounded-2xl bg-gradient-to-r from-amber-500 via-cyan-500 to-purple-600 hover:from-amber-400 hover:via-cyan-400 hover:to-purple-500 text-slate-950 font-black text-lg sm:text-xl shadow-xl shadow-cyan-500/25 hover:shadow-cyan-500/40 transform active:scale-95 transition flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-dice text-2xl animate-spin-slow"></i>
+                    <span id="spinBtnText">สุ่มการ์ดอาหารด่วน!</span>
+                </button>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-4 px-4 text-center text-xs text-slate-500">
+        <p>🍱 เว็บแอพสุ่มเมนูอาหารประจำวัน | พัฒนาด้วย Tailwind CSS, Web Audio API & HTML5 Canvas</p>
+    </footer>
+
+    <!-- Canvas Confetti -->
+    <canvas id="confettiCanvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+    <!-- MODAL 1: History Log Modal -->
+    <div id="historyModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left"></i> ประวัติการกิน (3 วันล่าสุด)
+                </h3>
+                <button onclick="app.closeModal('historyModal')" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-400">
+                รายการอาหารที่คุณกดเลือกรับทาน ระบบจะบันทึกไว้เพื่อหลีกเลี่ยงการสุ่มได้เมนูเดิมใน 3 วันถัดไป
+            </p>
+
+            <div class="flex-grow overflow-y-auto space-y-2 pr-1" id="historyList">
+                <!-- History Items JS -->
+            </div>
+
+            <div class="border-t border-slate-800 pt-3 flex justify-between items-center">
+                <button onclick="app.clearHistory()" class="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-semibold border border-rose-500/30 transition">
+                    <i class="fa-solid fa-trash me-1"></i> ล้างประวัติทั้งหมด
+                </button>
+                <button onclick="app.closeModal('historyModal')" class="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold">
+                    ปิด
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Custom Menu Manager Modal -->
+    <div id="customMenuModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl p-6 space-y-4 shadow-2xl relative max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-cyan-400 flex items-center gap-2">
+                    <i class="fa-solid fa-utensils"></i> จัดการรายการเมนูอาหาร
+                </h3>
+                <button onclick="app.closeModal('customMenuModal')" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Form: Add New Dish -->
+            <form id="addMenuForm" onsubmit="app.saveNewMenu(event)" class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/70 space-y-3">
+                <h4 class="text-xs font-semibold text-cyan-300 flex items-center gap-1">
+                    <i class="fa-solid fa-plus-circle"></i> เพิ่มเมนูอาหารใหม่ของคุณ
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input type="text" id="newEmoji" placeholder="Emoji (เช่น 🍲)" required class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500">
+                    <input type="text" id="newName" placeholder="ชื่อเมนูอาหาร" required class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 sm:col-span-2">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <select id="newCategory" required class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500">
+                        <option value="ready-meal">โซนข้าวแกง / อาหารตักสำเร็จ</option>
+                        <option value="made-to-order">โซนอาหารตามสั่ง</option>
+                        <option value="noodles">โซนเมนูเส้น / ก๋วยเตี๋ยว</option>
+                        <option value="specialty-rice">โซนอาหารจานเดียวเฉพาะทาง</option>
+                        <option value="isan-salads">โซนยำและอาหารอีสาน</option>
+                        <option value="snacks">โซนทานเล่น / ของทอด</option>
+                        <option value="desserts">โซนของหวานและผลไม้</option>
+                        <option value="beverages">โซนเครื่องดื่ม</option>
+                    </select>
+                    <input type="text" id="newTags" placeholder="วัตถุดิบ (คั่นด้วยจุลภาค เช่น หมู, เผ็ด)" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500">
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="px-4 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg text-xs transition">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> บันทึกเมนู
+                    </button>
+                </div>
+            </form>
+
+            <!-- Search Menu List -->
+            <div class="flex items-center justify-between gap-2">
+                <input type="text" id="menuSearchInput" oninput="app.renderMenuList()" placeholder="ค้นหาเมนู..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white">
+                <button onclick="app.resetDefaultMenus()" class="whitespace-nowrap px-3 py-1.5 text-xs text-amber-400 hover:underline">
+                    คืนค่าเริ่มต้น
+                </button>
+            </div>
+
+            <!-- List of Menus -->
+            <div class="flex-grow overflow-y-auto space-y-1.5 pr-1 max-h-60" id="menuManageList">
+                <!-- Menu Items JS -->
+            </div>
+
+            <div class="border-t border-slate-800 pt-3 flex justify-end">
+                <button onclick="app.closeModal('customMenuModal')" class="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold">
+                    ปิด
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+            }
+
+            playTick() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.04);
+
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.04);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.05);
+            }
+
+            playFlip() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.15);
+
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.16);
+            }
+
+            playFanfare() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+
+                    gain.gain.setValueAtTime(0, this.ctx.currentTime + idx * 0.08);
+                    gain.gain.linearRampToValueAtTime(0.25, this.ctx.currentTime + idx * 0.08 + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.08 + 0.35);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(this.ctx.currentTime + idx * 0.08);
+                    osc.stop(this.ctx.currentTime + idx * 0.08 + 0.36);
+                });
+            }
+        }
+
+        class Confetti {
+            constructor() {
+                this.canvas = document.getElementById('confettiCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.particles = [];
+                this.animating = false;
+
+                window.addEventListener('resize', () => this.resize());
+                this.resize();
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            burst() {
+                this.particles = [];
+                const colors = ['#f59e0b', '#06b6d4', '#8b5cf6', '#10b981', '#ec4899'];
+                for (let i = 0; i < 90; i++) {
+                    this.particles.push({
+                        x: this.canvas.width / 2,
+                        y: this.canvas.height / 2 + 50,
+                        vx: (Math.random() - 0.5) * 18,
+                        vy: (Math.random() - 0.7) * 20,
+                        size: Math.random() * 8 + 4,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        rotation: Math.random() * 360,
+                        vRot: (Math.random() - 0.5) * 10,
+                        opacity: 1
+                    });
+                }
+
+                if (!this.animating) {
+                    this.animating = true;
+                    this.loop();
+                }
+            }
+
+            loop() {
+                if (!this.animating) return;
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                let active = false;
+                this.particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.4; // gravity
+                    p.rotation += p.vRot;
+                    p.opacity -= 0.012;
+
+                    if (p.opacity > 0) {
+                        active = true;
+                        this.ctx.save();
+                        this.ctx.translate(p.x, p.y);
+                        this.ctx.rotate((p.rotation * Math.PI) / 180);
+                        this.ctx.globalAlpha = Math.max(0, p.opacity);
+                        this.ctx.fillStyle = p.color;
+                        this.ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                        this.ctx.restore();
+                    }
+                });
+
+                if (active) {
+                    requestAnimationFrame(() => this.loop());
+                } else {
+                    this.animating = false;
+                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                }
+            }
+        }
+
+        const DEFAULT_CATEGORIES = [
+            { id: 'all', name: 'ทั้งหมด', icon: 'fa-border-all', type: 'all' },
+            { id: 'ready-meal', name: 'โซนข้าวแกง', icon: 'fa-bowl-rice', type: 'main' },
+            { id: 'made-to-order', name: 'อาหารตามสั่ง', icon: 'fa-fire-burner', type: 'main' },
+            { id: 'noodles', name: 'ก๋วยเตี๋ยว/เส้น', icon: 'fa-bowl-food', type: 'main' },
+            { id: 'specialty-rice', name: 'ข้าวเฉพาะทาง', icon: 'fa-drumstick-bite', type: 'main' },
+            { id: 'isan-salads', name: 'ยำ/อาหารอีสาน', icon: 'fa-pepper-hot', type: 'main' },
+            { id: 'snacks', name: 'ของทานเล่น', icon: 'fa-cookie-bite', type: 'snack' },
+            { id: 'desserts', name: 'ของหวาน/ผลไม้', icon: 'fa-ice-cream', type: 'snack' },
+            { id: 'beverages', name: 'เครื่องดื่ม', icon: 'fa-glass-water', type: 'drink' }
+        ];
+
+        const DEFAULT_EXCLUSIONS = [
+            { id: 'หมู', label: 'ไม่กินหมู' },
+            { id: 'เนื้อ', label: 'ไม่กินเนื้อวัว' },
+            { id: 'ไก่', label: 'ไม่กินไก่' },
+            { id: 'ทะเล', label: 'ไม่กินอาหารทะเล' },
+            { id: 'เผ็ด', label: 'ไม่กินเผ็ด' },
+            { id: 'ทอด', label: 'ไม่กินของทอด' }
+        ];
+
+        const INITIAL_DISHES = [
+            // โซนข้าวแกง
+            { id: 'm1', name: 'ข้าวราดแกงเขียวหวานไก่', category: 'ready-meal', emoji: '🍛', tags: ['ไก่', 'เผ็ด'], desc: 'ข้าวราดแกงเขียวหวานเข้มข้น หอมกลิ่นกะทิและสมุนไพร' },
+            { id: 'm2', name: 'ข้าวราดพะแนงหมู', category: 'ready-meal', emoji: '🍛', tags: ['หมู', 'เผ็ด'], desc: 'พะแนงหมูรสกลมกล่อม ราดข้าวสวยร้อนๆ พร้อมกินทันที' },
+            { id: 'm3', name: 'ข้าวราดผัดเผ็ดปลาดุก', category: 'ready-meal', emoji: '🐟', tags: ['ทะเล', 'เผ็ด', 'ทอด'], desc: 'ปลาดุกกรอบผัดพริกแกงเผ็ดจัดจ้าน' },
+            { id: 'm4', name: 'ข้าวราดไข่พะโล้ + หมูทอด', category: 'ready-meal', emoji: '🥚', tags: ['หมู', 'ทอด'], desc: 'ไข่พะโล้น้ำรสหวานเค็มกลมกล่อม ทานคู่หมูทอดกรอบ' },
+            { id: 'm5', name: 'ข้าวราดผัดกะเพราตักสำเร็จ', category: 'ready-meal', emoji: '🍳', tags: ['หมู', 'เผ็ด'], desc: 'กะเพราถาดตักสำเร็จ รวดเร็วทันใจไม่ต้องรอปรุง' },
+
+            // โซนอาหารตามสั่ง
+            { id: 'm6', name: 'ข้าวผัดกะเพราหมูกรอบ + ไข่ดาว', category: 'made-to-order', emoji: '🍳', tags: ['หมู', 'เผ็ด', 'ทอด'], desc: 'เมนูยอดฮิต ผัดกะเพราหมูกรอบกรุบกรอบ เสิร์ฟพร้อมไข่ดาว' },
+            { id: 'm7', name: 'ข้าวผัดคะน้าหมูกรอบ', category: 'made-to-order', emoji: '🥬', tags: ['หมู'], desc: 'คะน้าสดกรอบผัดไฟแรงใส่หมูกรอบและพริกสด' },
+            { id: 'm8', name: 'ข้าวผัดปู / ข้าวผัดกุ้ง', category: 'made-to-order', emoji: '🍚', tags: ['ทะเล'], desc: 'ข้าวผัดเม็ดสวย หอมกลิ่นกระทะ เสิร์ฟพร้อมพริกน้ำปลาและมะนาว' },
+            { id: 'm9', name: 'ผัดซีอิ๊วหมู / ไก่', category: 'made-to-order', emoji: '🍝', tags: ['หมู', 'ไก่'], desc: 'เส้นใหญ่ผัดซีอิ๊วดำหอมกลิ่นกระทะ นุ่มอร่อย' },
+            { id: 'm10', name: 'สุกี้น้ำ / สุกี้แห้งทะเล', category: 'made-to-order', emoji: '🍲', tags: ['ทะเล', 'เผ็ด'], desc: 'สุกี้เข้มข้นใส่วุ้นเส้น ผักสด และซอสสุกี้สูตรเด็ด' },
+            { id: 'm11', name: 'ราดหน้าหมูหมักเส้นใหญ่', category: 'made-to-order', emoji: '🍜', tags: ['หมู'], desc: 'เส้นใหญ่ผัดหอม ราดน้ำราดหน้ารสกลมกล่อมใส่หมูหมักนุ่ม' },
+            { id: 'm12', name: 'สเต๊กไก่ / หมู จานร้อน', category: 'made-to-order', emoji: '🥩', tags: ['หมู', 'ไก่'], desc: 'สเต๊กเนื้อนุ่ม ย่างบนจานร้อน เสิร์ฟพร้อมเฟรนช์ฟรายส์' },
+
+            // โซนเมนูเส้น / ก๋วยเตี๋ยว
+            { id: 'm13', name: 'ก๋วยเตี๋ยวต้มยำสุโขทัย', category: 'noodles', emoji: '🍜', tags: ['หมู', 'เผ็ด'], desc: 'ก๋วยเตี๋ยวต้มยำรสแซ่บ ใส่ถั่วฝักยาวและถั่วลิสงบด' },
+            { id: 'm14', name: 'ก๋วยเตี๋ยวเย็นตาโฟทรงเครื่อง', category: 'noodles', emoji: '🍜', tags: ['ทะเล'], desc: 'ซอสเย็นตาโฟสีเข้มข้น ใส่ลูกชิ้นปลา ปลาหมึกกรอบ และเลือดหมู' },
+            { id: 'm15', name: 'บะหมี่เกี๊ยวหมูแดงหมูกรอบ', category: 'noodles', emoji: '🍜', tags: ['หมู', 'ทอด'], desc: 'บะหมี่เส้นเหนียวนุ่ม เกี๊ยวกุ้งหมูแน่นๆ และหมูแดงฉ่ำๆ' },
+            { id: 'm16', name: 'ขนมจีนน้ำยาป่า / น้ำยากะทิ', category: 'noodles', emoji: '🧄', tags: ['ทะเล', 'เผ็ด'], desc: 'เส้นขนมจีนนุ่มๆ ราดน้ำยาปลาเข้มข้น แกล้มผักสด' },
+            { id: 'm17', name: 'ก๋วยจั๊บน้ำจ้าน / น้ำใส', category: 'noodles', emoji: '🍲', tags: ['หมู', 'ทอด'], desc: 'เส้นก๋วยจั๊บนุ่ม หมูกรอบ เครื่องใน และไข่ต้มในน้ำซุปหอมพริกไทย' },
+
+            // โซนอาหารจานเดียวเฉพาะทาง
+            { id: 'm18', name: 'ข้าวมันไก่ต้ม / ไก่ทอด', category: 'specialty-rice', emoji: '🍗', tags: ['ไก่', 'ทอด'], desc: 'ข้าวมันหอมนุ่ม เสิร์ฟพร้อมไก่ต้มนุ่มฉ่ำ หรือไก่ทอดกรอบ' },
+            { id: 'm19', name: 'ข้าวหมูแดง - หมูกรอบ', category: 'specialty-rice', emoji: '🥓', tags: ['หมู', 'ทอด'], desc: 'ราดน้ำซอสหมูแดงรสหวานกลมกล่อม แนบกุนเชียงและไข่ต้ม' },
+            { id: 'm20', name: 'ข้าวขาหมูเนื้อหนัง', category: 'specialty-rice', emoji: '🍖', tags: ['หมู'], desc: 'ขาหมูตุ๋นพะโล้เปื่อยร่อน กินคู่คะน้าและน้ำจิ้มส้ม' },
+            { id: 'm21', name: 'ข้าวหน้าเป็ดย่าง', category: 'specialty-rice', emoji: '🦆', tags: ['เผ็ด'], desc: 'เป็ดย่างหนังกรอบเนื้อนุ่ม ราดน้ำซอสเป็ดเข้มข้น' },
+
+            // โซนยำและอาหารอีสาน
+            { id: 'm22', name: 'ส้มตำไทย / ตำปูปลาร้า', category: 'isan-salads', emoji: '🥗', tags: ['เผ็ด'], desc: 'เส้นมะละกอกรอบ ชูรสเผ็ดเปรี้ยวหวานครบเครื่อง' },
+            { id: 'm23', name: 'ลาบหมู / น้ำตกเนื้อ', category: 'isan-salads', emoji: '🌶️', tags: ['หมู', 'เนื้อ', 'เผ็ด'], desc: 'หอมกลิ่นข้าวคั่วและพริกป่น รสชาติแซ่บนัว' },
+            { id: 'm24', name: 'ไก่ย่างวิเชียรบุรี + ข้าวเหนียว', category: 'isan-salads', emoji: '🍗', tags: ['ไก่'], desc: 'ไก่ย่างสมุนไพรหนังกรอบ เสิร์ฟพร้อมน้ำจิ้มแจ่วรสเด็ด' },
+            { id: 'm25', name: 'ยำวุ้นเส้นทรงเครื่อง / ยำมาม่า', category: 'isan-salads', emoji: '🥗', tags: ['หมู', 'ทะเล', 'เผ็ด'], desc: 'ยำวุ้นเส้นใส่หมูสับ หมูยอ และกุ้งสด รสชาติจัดจ้าน' },
+
+            // โซนทานเล่น / ของทอด
+            { id: 's1', name: 'ลูกชิ้นทอด / ลูกชิ้นปิ้งน้ำจิ้มมะขาม', category: 'snacks', emoji: '🍢', tags: ['ทอด'], desc: 'ลูกชิ้นร้อนๆ ราดน้ำจิ้มรสเด็ดเผ็ดหวาน' },
+            { id: 's2', name: 'ไก่ทอดหาดใหญ่ + หอมเจียว', category: 'snacks', emoji: '🍗', tags: ['ไก่', 'ทอด'], desc: 'ไก่ทอดหมักเครื่องเทศหอมๆ โรยหอมเจียวแน่นๆ' },
+            { id: 's3', name: 'ปอเปี๊ยะทอดใส้วุ้นเส้น', category: 'snacks', emoji: '🥟', tags: ['ทอด'], desc: 'แป้งกรอบใส้วุ้นเส้นผัก ทานคู่ซอสบ๊วยหวาน' },
+            { id: 's4', name: 'ขนมปังปิ้งเนยนม / สังขยา', category: 'snacks', emoji: '🍞', tags: [], desc: 'ขนมปังปิ้งเตาถ่านหอมๆ ราดเนยนมฉ่ำๆ' },
+
+            // โซนของหวานและผลไม้
+            { id: 'd1', name: 'น้ำแข็งใส / รวมมิตรน้ำกะทิ', category: 'desserts', emoji: '🍧', tags: [], desc: 'หวานเย็นชื่นใจ ใส่เครื่องแน่นทั้งทับทิมกรอบ ลอดช่อง' },
+            { id: 'd2', name: 'ผลไม้สดปอกเปลือก (แตงโม/สับปะรด/ฝรั่ง)', category: 'desserts', emoji: '🍉', tags: [], desc: 'ผลไม้สดแช่เย็นเจี๊ยบ หวานสดชื่น เหมาะหลังจานหลัก' },
+            { id: 'd3', name: 'ข้าวเหนียวมะม่วง', category: 'desserts', emoji: '🥭', tags: [], desc: 'มะม่วงสุกหวานฉ่ำ กินคู่ข้าวเหนียวมูนกะทิหอมๆ' },
+
+            // โซนเครื่องดื่ม
+            { id: 'b1', name: 'ชาเย็น / ชานมเย็นโบราณ', category: 'beverages', emoji: '🧋', tags: [], desc: 'ชาไทยชงสด หอมเข้มข้น หวานมันกำลังดี' },
+            { id: 'b2', name: 'กาแฟโบราณ / โอเลี้ยง', category: 'beverages', emoji: '☕', tags: [], desc: 'กาแฟเข้มข้นสไตล์ไทยดั้งเดิม เพิ่มพลังยามบ่าย' },
+            { id: 'b3', name: 'น้ำผลไม้ปั่น (แตงโม/ส้ม/มะนาว)', category: 'beverages', emoji: '🥤', tags: [], desc: 'น้ำผลไม้สดปั่นเนื้อเนียน ชื่นใจดับร้อน' },
+            { id: 'b4', name: 'น้ำอัดลมใส่น้ำแข็ง', category: 'beverages', emoji: '🥤', tags: [], desc: 'น้ำอัดลมซ่าสดชื่น ดับกระหาย' }
+        ];
+
+        class FoodRandomizerApp {
+            constructor() {
+                this.sound = new SoundFX();
+                this.confetti = new Confetti();
+
+                this.dishes = this.loadLocalStorage('fr_dishes', INITIAL_DISHES);
+                this.history = this.loadLocalStorage('fr_history', []);
+                this.activeCategory = 'all';
+                this.activeExclusions = new Set();
+                this.mode = 'single'; // 'single' or 'combo'
+                this.currentPick = null;
+                this.isSpinning = false;
+
+                this.initUI();
+            }
+
+            loadLocalStorage(key, defaultData) {
+                try {
+                    const data = localStorage.getItem(key);
+                    return data ? JSON.parse(data) : defaultData;
+                } catch (e) {
+                    return defaultData;
+                }
+            }
+
+            saveLocalStorage(key, data) {
+                try {
+                    localStorage.setItem(key, JSON.stringify(data));
+                } catch (e) {
+                    console.error('LocalStorage write error', e);
+                }
+            }
+
+            initUI() {
+                this.renderCategories();
+                this.renderExclusions();
+                this.updateAvailableCount();
+                this.updateHistoryBadge();
+            }
+
+            /* Render Category Chips */
+            renderCategories() {
+                const container = document.getElementById('categoryChips');
+                container.innerHTML = DEFAULT_CATEGORIES.map(cat => {
+                    const active = this.activeCategory === cat.id;
+                    const activeClass = active 
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold border-cyan-400 shadow-lg shadow-cyan-500/20' 
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700';
+                    return `
+                        <button onclick="app.selectCategory('${cat.id}')" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm border transition whitespace-nowrap flex items-center gap-2 ${activeClass}">
+                            <i class="fa-solid ${cat.icon}"></i>
+                            <span>${cat.name}</span>
+                        </button>
+                    `;
+                }).join('');
+            }
+
+            /* Render Exclusion Tags */
+            renderExclusions() {
+                const container = document.getElementById('exclusionChips');
+                container.innerHTML = DEFAULT_EXCLUSIONS.map(ex => {
+                    const isSelected = this.activeExclusions.has(ex.id);
+                    const btnClass = isSelected
+                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/60 font-semibold'
+                        : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200';
+                    return `
+                        <button onclick="app.toggleExclusion('${ex.id}')" class="px-2.5 py-1 rounded-lg text-xs border transition flex items-center gap-1.5 ${btnClass}">
+                            <i class="fa-solid ${isSelected ? 'fa-circle-xmark text-rose-400' : 'fa-circle'}"></i>
+                            <span>${ex.label}</span>
+                        </button>
+                    `;
+                }).join('');
+            }
+
+            selectCategory(catId) {
+                this.activeCategory = catId;
+                this.renderCategories();
+                this.updateAvailableCount();
+            }
+
+            toggleExclusion(exId) {
+                if (this.activeExclusions.has(exId)) {
+                    this.activeExclusions.delete(exId);
+                } else {
+                    this.activeExclusions.add(exId);
+                }
+                this.renderExclusions();
+                this.updateAvailableCount();
+            }
+
+            resetFilters() {
+                this.activeCategory = 'all';
+                this.activeExclusions.clear();
+                document.getElementById('antiRepeatToggle').checked = true;
+                this.renderCategories();
+                this.renderExclusions();
+                this.updateAvailableCount();
+            }
+
+            /* Filter Available Dishes based on Category, Exclusion & 3-Day History */
+            getFilteredDishes(categoryFilter = null) {
+                const targetCategory = categoryFilter || this.activeCategory;
+                const antiRepeat = document.getElementById('antiRepeatToggle').checked;
+
+                // Calculate 3 days cutoff
+                const threeDaysAgo = Date.now() - (3 * 24 * 60 * 60 * 1000);
+                const recentMealIds = new Set(
+                    this.history
+                        .filter(item => item.timestamp >= threeDaysAgo)
+                        .map(item => item.dishId)
+                );
+
+                return this.dishes.filter(dish => {
+                    // Category check
+                    if (targetCategory !== 'all') {
+                        if (dish.category !== targetCategory) return false;
+                    }
+
+                    // Exclusion check
+                    for (let tag of dish.tags || []) {
+                        if (this.activeExclusions.has(tag)) return false;
+                    }
+
+                    // Anti-repeat check
+                    if (antiRepeat && recentMealIds.has(dish.id)) {
+                        return false;
+                    }
+
+                    return true;
+                });
+            }
+
+            updateAvailableCount() {
+                const count = this.getFilteredDishes().length;
+                document.getElementById('availableCount').textContent = count;
+            }
+
+            setMode(mode) {
+                this.mode = mode;
+                const singleBtn = document.getElementById('modeSingleBtn');
+                const comboBtn = document.getElementById('modeComboBtn');
+                const singleView = document.getElementById('singleCardView');
+                const comboView = document.getElementById('comboCardView');
+
+                if (mode === 'single') {
+                    singleBtn.className = 'px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md';
+                    comboBtn.className = 'px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-400 hover:text-slate-200';
+                    singleView.classList.remove('hidden');
+                    comboView.classList.add('hidden');
+                    document.getElementById('spinBtnText').textContent = 'สุ่มการ์ดอาหารด่วน!';
+                } else {
+                    comboBtn.className = 'px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-md';
+                    singleBtn.className = 'px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-400 hover:text-slate-200';
+                    singleView.classList.add('hidden');
+                    comboView.classList.remove('hidden');
+                    document.getElementById('spinBtnText').textContent = 'สุ่มเซ็ตคอมโบ 3 อย่าง!';
+                }
+            }
+
+            spin() {
+                if (this.isSpinning) return;
+
+                if (this.mode === 'single') {
+                    this.spinSingle();
+                } else {
+                    this.spinCombo();
+                }
+            }
+
+            spinSingle() {
+                const available = this.getFilteredDishes();
+                if (available.length === 0) {
+                    alert('ไม่พบเมนูที่ตรงกับเงื่อนไขตัวกรองของคุณ! กรุณาลดตัวกรองของแพ้ หรือปิดกฎป้องกันอาหารซ้ำ');
+                    return;
+                }
+
+                this.isSpinning = true;
+                const cardInner = document.getElementById('cardInner');
+                
+                // Flip card to front if back is currently shown
+                cardInner.classList.remove('rotate-y-180');
+
+                // Rapid emoji shuffle animation
+                const frontEmoji = document.getElementById('frontEmojiIcon');
+                const frontTitle = document.getElementById('frontCardTitle');
+
+                let shuffleCount = 0;
+                const maxShuffles = 18;
+
+                const shuffleInterval = setInterval(() => {
+                    const randomTemp = available[Math.floor(Math.random() * available.length)];
+                    frontEmoji.textContent = randomTemp.emoji;
+                    frontTitle.textContent = randomTemp.name;
+                    this.sound.playTick();
+                    shuffleCount++;
+
+                    if (shuffleCount >= maxShuffles) {
+                        clearInterval(shuffleInterval);
+
+                        // Select final winner
+                        this.currentPick = available[Math.floor(Math.random() * available.length)];
+                        this.renderSingleResult(this.currentPick);
+
+                        // Card 3D Flip animation
+                        setTimeout(() => {
+                            cardInner.classList.add('rotate-y-180');
+                            this.sound.playFlip();
+
+                            setTimeout(() => {
+                                this.sound.playFanfare();
+                                this.confetti.burst();
+                                this.isSpinning = false;
+                            }, 400);
+                        }, 200);
+                    }
+                }, 80);
+            }
+
+            renderSingleResult(dish) {
+                const catObj = DEFAULT_CATEGORIES.find(c => c.id === dish.category);
+                document.getElementById('resultCategory').textContent = catObj ? catObj.name : 'โซนอาหาร';
+                document.getElementById('resultStation').innerHTML = `<i class="fa-solid fa-store me-1"></i> ${catObj ? catObj.name : 'ร้านทั่วไป'}`;
+                document.getElementById('resultEmoji').textContent = dish.emoji;
+                document.getElementById('resultName').textContent = dish.name;
+                document.getElementById('resultDesc').textContent = dish.desc || 'เมนูอร่อยแนะนำสำหรับวันนี้';
+
+                const tagsContainer = document.getElementById('resultTags');
+                tagsContainer.innerHTML = (dish.tags || []).map(tag => `
+                    <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700 text-[11px]">
+                        #${tag}
+                    </span>
+                `).join('');
+            }
+
+            spinCombo() {
+                // Get dishes per category group
+                const mains = this.dishes.filter(d => ['ready-meal', 'made-to-order', 'noodles', 'specialty-rice', 'isan-salads'].includes(d.category));
+                const snacks = this.dishes.filter(d => ['snacks', 'desserts'].includes(d.category));
+                const drinks = this.dishes.filter(d => d.category === 'beverages');
+
+                if (!mains.length || !snacks.length || !drinks.length) {
+                    alert('เมนูในระบบไม่เพียงพอสำหรับการสุ่มเซ็ตคอมโบ');
+                    return;
+                }
+
+                this.isSpinning = true;
+
+                let count = 0;
+                const interval = setInterval(() => {
+                    const tempM = mains[Math.floor(Math.random() * mains.length)];
+                    const tempS = snacks[Math.floor(Math.random() * snacks.length)];
+                    const tempD = drinks[Math.floor(Math.random() * drinks.length)];
+
+                    document.getElementById('comboMainEmoji').textContent = tempM.emoji;
+                    document.getElementById('comboMainName').textContent = tempM.name;
+
+                    document.getElementById('comboSnackEmoji').textContent = tempS.emoji;
+                    document.getElementById('comboSnackName').textContent = tempS.name;
+
+                    document.getElementById('comboDrinkEmoji').textContent = tempD.emoji;
+                    document.getElementById('comboDrinkName').textContent = tempD.name;
+
+                    this.sound.playTick();
+                    count++;
+
+                    if (count >= 16) {
+                        clearInterval(interval);
+                        this.sound.playFanfare();
+                        this.confetti.burst();
+                        this.isSpinning = false;
+                    }
+                }, 90);
+            }
+
+            /* Accept Meal & Record History */
+            acceptMeal() {
+                if (!this.currentPick) return;
+
+                const historyItem = {
+                    id: Date.now().toString(),
+                    dishId: this.currentPick.id,
+                    dishName: this.currentPick.name,
+                    emoji: this.currentPick.emoji,
+                    timestamp: Date.now(),
+                    dateStr: new Date().toLocaleDateString('th-TH', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                };
+
+                this.history.unshift(historyItem);
+                this.saveLocalStorage('fr_history', this.history);
+                this.updateHistoryBadge();
+                this.updateAvailableCount();
+
+                alert(`บันทึกประวัติสำเร็จ! คุณเลือกกิน "${this.currentPick.name}" แล้ว`);
+            }
+
+            searchNearby() {
+                if (!this.currentPick) return;
+                const query = encodeURIComponent(`ร้าน ${this.currentPick.name} ใกล้ฉัน`);
+                window.open(`https://www.google.com/maps/search/${query}`, '_blank');
+            }
+
+            resetView() {
+                const cardInner = document.getElementById('cardInner');
+                cardInner.classList.remove('rotate-y-180');
+            }
+
+            /* History Modal Logic */
+            updateHistoryBadge() {
+                document.getElementById('historyBadge').textContent = this.history.length;
+            }
+
+            renderHistoryList() {
+                const container = document.getElementById('historyList');
+                if (this.history.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-8 text-slate-500 text-xs">
+                            ยังไม่มีประวัติการเลือกอาหาร
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = this.history.map(item => `
+                    <div class="flex items-center justify-between bg-slate-800/80 p-3 rounded-xl border border-slate-700/60">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${item.emoji}</span>
+                            <div>
+                                <h5 class="text-xs sm:text-sm font-bold text-slate-200">${item.dishName}</h5>
+                                <p class="text-[10px] text-slate-400">${item.dateStr}</p>
+                            </div>
+                        </div>
+                        <button onclick="app.removeHistoryItem('${item.id}')" class="text-slate-500 hover:text-rose-400 p-1 text-xs">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+
+            removeHistoryItem(id) {
+                this.history = this.history.filter(h => h.id !== id);
+                this.saveLocalStorage('fr_history', this.history);
+                this.renderHistoryList();
+                this.updateHistoryBadge();
+                this.updateAvailableCount();
+            }
+
+            clearHistory() {
+                if (confirm('คุณแน่ใจหรือว่าต้องการล้างประวัติการเลือกอาหารทั้งหมด?')) {
+                    this.history = [];
+                    this.saveLocalStorage('fr_history', this.history);
+                    this.renderHistoryList();
+                    this.updateHistoryBadge();
+                    this.updateAvailableCount();
+                }
+            }
+
+            /* Custom Menu Manager Logic */
+            renderMenuList() {
+                const container = document.getElementById('menuManageList');
+                const searchQuery = (document.getElementById('menuSearchInput').value || '').toLowerCase();
+
+                const filtered = this.dishes.filter(d => 
+                    d.name.toLowerCase().includes(searchQuery) ||
+                    (d.tags && d.tags.some(t => t.toLowerCase().includes(searchQuery)))
+                );
+
+                if (filtered.length === 0) {
+                    container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">ไม่พบเมนูอาหาร</div>`;
+                    return;
+                }
+
+                container.innerHTML = filtered.map(dish => {
+                    const catObj = DEFAULT_CATEGORIES.find(c => c.id === dish.category);
+                    return `
+                        <div class="flex items-center justify-between bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-xl">${dish.emoji}</span>
+                                <div>
+                                    <div class="text-xs font-semibold text-slate-200">${dish.name}</div>
+                                    <div class="text-[10px] text-slate-400">${catObj ? catObj.name : '-'}</div>
+                                </div>
+                            </div>
+                            <button onclick="app.deleteCustomMenu('${dish.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700 transition">
+                                <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            saveNewMenu(e) {
+                e.preventDefault();
+                const emoji = document.getElementById('newEmoji').value.trim() || '🍱';
+                const name = document.getElementById('newName').value.trim();
+                const category = document.getElementById('newCategory').value;
+                const rawTags = document.getElementById('newTags').value.trim();
+
+                if (!name) return;
+
+                const tags = rawTags ? rawTags.split(',').map(t => t.trim()) : [];
+
+                const newDish = {
+                    id: 'custom_' + Date.now(),
+                    name: name,
+                    category: category,
+                    emoji: emoji,
+                    tags: tags,
+                    desc: 'เมนูอาหารเพิ่มเติมของคุณเอง',
+                    isCustom: true
+                };
+
+                this.dishes.unshift(newDish);
+                this.saveLocalStorage('fr_dishes', this.dishes);
+
+                // Clear Form
+                document.getElementById('addMenuForm').reset();
+                this.renderMenuList();
+                this.updateAvailableCount();
+
+                alert(`เพิ่มเมนู "${name}" เรียบร้อยแล้ว!`);
+            }
+
+            deleteCustomMenu(id) {
+                if (confirm('ต้องการลบเมนูอาหารนี้ใช่หรือไม่?')) {
+                    this.dishes = this.dishes.filter(d => d.id !== id);
+                    this.saveLocalStorage('fr_dishes', this.dishes);
+                    this.renderMenuList();
+                    this.updateAvailableCount();
+                }
+            }
+
+            resetDefaultMenus() {
+                if (confirm('ต้องการรีเซ็ตรายการอาหารกลับเป็นค่าเริ่มต้นใช่หรือไม่?')) {
+                    this.dishes = INITIAL_DISHES;
+                    this.saveLocalStorage('fr_dishes', this.dishes);
+                    this.renderMenuList();
+                    this.updateAvailableCount();
+                }
+            }
+
+            /* Sound Toggle */
+            toggleSound() {
+                this.sound.muted = !this.sound.muted;
+                const soundIcon = document.getElementById('soundIcon');
+                if (this.sound.muted) {
+                    soundIcon.className = 'fa-solid fa-volume-xmark text-slate-500';
+                } else {
+                    soundIcon.className = 'fa-solid fa-volume-high text-cyan-400';
+                }
+            }
+
+            /* Modals Controller */
+            openModal(modalId) {
+                if (modalId === 'historyModal') this.renderHistoryList();
+                if (modalId === 'customMenuModal') this.renderMenuList();
+                document.getElementById(modalId).classList.remove('hidden');
+            }
+
+            closeModal(modalId) {
+                document.getElementById(modalId).classList.add('hidden');
+            }
+        }
+
+        // Initialize App on Window Load
+        let app;
+        window.onload = function() {
+            app = new FoodRandomizerApp();
+        };
+    </script>
+</body>
+</html>
